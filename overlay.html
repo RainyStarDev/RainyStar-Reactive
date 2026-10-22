@@ -71,7 +71,18 @@
     }
 
     body.clean #panel { display: none; }
-    body.clean #avatar { width: 100vw; height: 100vh; }
+    body.clean #avatar {
+  width: auto;
+  height: auto;
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+  object-position: center bottom;
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+}
 
     #empty {
       position: fixed;
