@@ -5,27 +5,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RainyStar Reactive — Overlay</title>
+
   <style>
     * { box-sizing: border-box; }
 
     html, body {
       margin: 0;
-      min-width: 100%;
-      min-height: 100%;
+      width: 100%;
+      height: 100%;
       background: transparent;
       color: #f4f4f5;
       font-family: Arial, sans-serif;
     }
 
-    body { overflow: hidden; }
+    body {
+      overflow: hidden;
+    }
 
+    /* Аватар в обычном окне: целиком помещается в экран */
     #avatar {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center bottom;
-}
+      display: none;
+      position: fixed;
+      width: auto;
+      height: auto;
+      max-width: 100vw;
+      max-height: 100vh;
+      object-fit: contain;
+      object-position: center bottom;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+    }
+
+    /* В OBS оставляем аватар внутри размера Browser Source */
+    body.obs-mode #avatar {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      object-position: center bottom;
+    }
+
+    #empty {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #171722dd;
+      color: white;
+      font-size: 12px;
+    }
+
+    body.has-avatar #empty,
+    body.clean #empty {
+      display: none;
+    }
 
     #panel {
       position: fixed;
@@ -33,6 +69,8 @@
       left: 12px;
       z-index: 10;
       width: min(340px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
+      overflow-y: auto;
       padding: 16px;
       border: 1px solid #414155;
       border-radius: 14px;
@@ -40,9 +78,23 @@
       box-shadow: 0 8px 30px #0008;
     }
 
-    h2 { margin: 0 0 12px; font-size: 18px; }
-    p { margin: 8px 0; font-size: 13px; color: #c7c7d4; }
-    label { display: block; margin-top: 12px; font-size: 13px; }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 8px 0;
+      color: #c7c7d4;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      font-size: 13px;
+    }
 
     input[type="file"] {
       display: block;
@@ -61,52 +113,40 @@
       cursor: pointer;
     }
 
-    button:hover { background: #393951; }
+    button:hover {
+      background: #393951;
+    }
+
+    button.danger {
+      border-color: #8d414b;
+      background: #49252d;
+    }
 
     #status {
       margin-top: 12px;
       overflow-wrap: anywhere;
-      font-size: 12px;
       color: #b8f3ce;
-    }
-
-    body.clean #panel { display: none; }
-    body.clean #avatar {
-  width: auto;
-  height: auto;
-  max-width: 100vw;
-  max-height: 100vh;
-  object-fit: contain;
-  object-position: center bottom;
-  position: fixed;
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-}
-
-    #empty {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      color: white;
-      background: #171722dd;
-      padding: 8px;
-      border-radius: 8px;
       font-size: 12px;
+      line-height: 1.4;
     }
 
-    body.has-avatar #empty { display: none; }
-    body.clean #empty { display: none; }
+    body.clean #panel {
+      display: none;
+    }
+
+    body.clean #empty {
+      display: none;
+    }
   </style>
 </head>
+
 <body>
   <img id="avatar" alt="Аватар RainyStar Reactive">
-
-  <div id="empty">Сначала загрузи PNG в панели управления</div>
+  <div id="empty">Аватар не загружен</div>
 
   <section id="panel">
     <h2>RainyStar Reactive</h2>
-    <p>Загрузи два PNG одного персонажа: с закрытым и открытым ртом.</p>
+    <p>Загрузи PNG с закрытым и открытым ртом. Изображения должны быть одного размера и показывать одного персонажа.</p>
 
     <label>
       PNG — рот закрыт
@@ -122,13 +162,22 @@
       <button id="closedBtn">Рот закрыт</button>
       <button id="openBtn">Рот открыт</button>
     </div>
+
     <div>
       <button id="testBtn">Тест переключения</button>
       <button id="stopBtn">Стоп</button>
-      <button id="hideButton">Скрыть панель</button>
     </div>
 
-    <div id="status">Ожидаю загрузки изображений.</div>
+    <div>
+      <button id="hideButton">Скрыть панель</button>
+      <button id="showButton">Показать панель</button>
+    </div>
+
+    <div>
+      <button id="clearButton" class="danger">Очистить аватар</button>
+    </div>
+
+    <div id="status">Загрузи PNG, чтобы начать.</div>
   </section>
 
   <script>
@@ -143,20 +192,18 @@
       let timer = null;
       let isOpen = false;
 
-      function showStatus(message) {
-        status.textContent = message;
+      const params = new URLSearchParams(location.search);
+
+      /*
+       * Добавь ?obs=1 в URL источника OBS.
+       * Обычная ссылка без параметра использует масштабирование под окно.
+       */
+      if (params.get('obs') === '1') {
+        document.body.classList.add('obs-mode');
       }
 
-      function render() {
-        const src = isOpen ? openImage : closedImage;
-
-        if (src) {
-          avatar.src = src;
-          document.body.classList.add('has-avatar');
-        } else {
-          avatar.removeAttribute('src');
-          document.body.classList.remove('has-avatar');
-        }
+      function setStatus(message) {
+        status.textContent = message;
       }
 
       function stopTest() {
@@ -166,9 +213,23 @@
         }
       }
 
+      function render() {
+        const src = isOpen ? openImage : closedImage;
+
+        if (src) {
+          avatar.src = src;
+          avatar.style.display = 'block';
+          document.body.classList.add('has-avatar');
+        } else {
+          avatar.removeAttribute('src');
+          avatar.style.display = 'none';
+          document.body.classList.remove('has-avatar');
+        }
+      }
+
       function startTest() {
         if (!closedImage || !openImage) {
-          showStatus('Сначала загрузи оба PNG.');
+          setStatus('Сначала загрузи оба PNG.');
           return;
         }
 
@@ -181,19 +242,19 @@
           render();
         }, 500);
 
-        showStatus('Тест работает: рот переключается каждые 0,5 секунды.');
+        setStatus('Тест работает: переключение каждые 0,5 секунды.');
       }
 
       function loadFile(file, type) {
         if (!file) return;
 
         if (file.type !== 'image/png') {
-          showStatus('Выбери файл в формате PNG.');
+          setStatus('Нужен файл в формате PNG.');
           return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-          showStatus('Файл больше 5 МБ. Выбери PNG поменьше.');
+          setStatus('Файл больше 5 МБ. Выбери изображение поменьше.');
           return;
         }
 
@@ -205,35 +266,37 @@
           image.onload = () => {
             if (type === 'closed') {
               closedImage = reader.result;
-              try {
-                localStorage.setItem('rsr_closed_png', closedImage);
-              } catch (error) {
-                showStatus('PNG загружен, но не удалось сохранить его в браузере.');
-              }
             } else {
               openImage = reader.result;
-              try {
-                localStorage.setItem('rsr_open_png', openImage);
-              } catch (error) {
-                showStatus('PNG загружен, но не удалось сохранить его в браузере.');
-              }
+            }
+
+            try {
+              localStorage.setItem(
+                type === 'closed' ? 'rsr_closed_png' : 'rsr_open_png',
+                reader.result
+              );
+            } catch (error) {
+              setStatus('PNG загружен, но не удалось сохранить его в браузере.');
             }
 
             isOpen = false;
             render();
 
             if (closedImage && openImage) {
-              showStatus('Оба PNG готовы. Можно запускать тест.');
+              setStatus('Оба PNG загружены. Можно запустить тест.');
             } else {
-              showStatus('Изображение загружено. Теперь загрузи второе.');
+              setStatus('Изображение загружено. Теперь загрузи второе.');
             }
           };
 
-          image.onerror = () => showStatus('Не удалось прочитать PNG. Попробуй другой файл.');
+          image.onerror = () => {
+            setStatus('Не удалось прочитать изображение. Попробуй другой PNG.');
+          };
+
           image.src = reader.result;
         };
 
-        reader.onerror = () => showStatus('Ошибка чтения файла.');
+        reader.onerror = () => setStatus('Ошибка чтения файла.');
         reader.readAsDataURL(file);
       }
 
@@ -249,18 +312,22 @@
         stopTest();
         isOpen = false;
         render();
-        showStatus(closedImage ? 'Показан PNG с закрытым ртом.' : 'Сначала загрузи PNG с закрытым ртом.');
+        setStatus(closedImage
+          ? 'Показан аватар с закрытым ртом.'
+          : 'Сначала загрузи PNG с закрытым ртом.');
       };
 
       document.getElementById('openBtn').onclick = () => {
         stopTest();
+
         if (!openImage) {
-          showStatus('Сначала загрузи PNG с открытым ртом.');
+          setStatus('Сначала загрузи PNG с открытым ртом.');
           return;
         }
+
         isOpen = true;
         render();
-        showStatus('Показан PNG с открытым ртом.');
+        setStatus('Показан аватар с открытым ртом.');
       };
 
       document.getElementById('testBtn').onclick = startTest;
@@ -269,28 +336,56 @@
         stopTest();
         isOpen = false;
         render();
-        showStatus('Тест остановлен.');
+        setStatus('Тест остановлен.');
       };
 
       document.getElementById('hideButton').onclick = () => {
         document.body.classList.add('clean');
+        setStatus('Панель скрыта. Тест, если он запущен, продолжится.');
+      };
+
+      document.getElementById('showButton').onclick = () => {
+        document.body.classList.remove('clean');
+      };
+
+      document.getElementById('clearButton').onclick = () => {
+        stopTest();
+        closedImage = null;
+        openImage = null;
+        isOpen = false;
+
+        try {
+          localStorage.removeItem('rsr_closed_png');
+          localStorage.removeItem('rsr_open_png');
+        } catch (error) {
+          setStatus('Не удалось очистить хранилище браузера.');
+          return;
+        }
+
+        closedFile.value = '';
+        openFile.value = '';
+        render();
+        document.body.classList.remove('clean');
+        setStatus('Аватар и оба сохранённых PNG удалены из хранилища этой страницы.');
       };
 
       try {
         closedImage = localStorage.getItem('rsr_closed_png');
         openImage = localStorage.getItem('rsr_open_png');
       } catch (error) {
-        showStatus('Браузер запретил доступ к сохранённым изображениям.');
+        setStatus('Браузер не разрешил прочитать сохранённые изображения.');
       }
 
       render();
 
-      if (new URLSearchParams(location.search).get('clean') === '1') {
+      if (params.get('clean') === '1') {
         document.body.classList.add('clean');
       }
 
       if (closedImage && openImage) {
-        showStatus('Изображения восстановлены из хранилища браузера.');
+        setStatus('Сохранённые изображения восстановлены.');
+      } else if (closedImage || openImage) {
+        setStatus('Найден один PNG. Загрузи недостающий.');
       }
     })();
   </script>
