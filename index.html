@@ -11,46 +11,45 @@
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: Arial, sans-serif;
+      background: transparent;
       color: #f4f5ff;
-      background: #10111d;
-      display: grid;
-      place-items: center;
-    }
-
-    main {
-      width: min(900px, 92%);
-      padding: 32px 20px;
+      font-family: Arial, sans-serif;
       text-align: center;
     }
 
-    h1 { color: #a9a4ff; }
-    .subtitle { color: #b8b8cc; }
+    main {
+      width: 100%;
+      padding: 16px;
+    }
 
     .avatar {
-      width: 220px;
-      height: 220px;
-      margin: 28px auto 12px;
-      border: 2px solid #7771df;
-      border-radius: 24px;
-      display: grid;
-      place-items: center;
-      background: #202137;
-      font-size: 90px;
-      transition: transform .15s, border-color .15s;
+      width: min(420px, 90vw);
+      height: min(600px, 75vh);
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
-    .avatar.speaking {
-      border-color: #68edc0;
-      transform: scale(1.04);
-      box-shadow: 0 0 28px #68edc055;
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
 
-    .status { color: #68edc0; }
+    h1 {
+      color: #a9a4ff;
+      font-size: 24px;
+    }
+
+    #status {
+      color: #68edc0;
+    }
 
     button {
-      margin: 8px 4px;
-      padding: 12px 18px;
+      margin: 5px;
+      padding: 12px 16px;
       border: 0;
       border-radius: 10px;
       background: #7771df;
@@ -59,33 +58,34 @@
       font-size: 15px;
     }
 
-    button:hover { background: #918bff; }
-    footer { margin-top: 32px; color: #89899f; font-size: 13px; }
+    button:hover {
+      background: #918bff;
+    }
   </style>
 </head>
 <body>
   <main>
     <h1>✦ RainyStar Reactive</h1>
-    <p class="subtitle">Анимированные аватары для Lolka и OBS</p>
 
-    <div id="avatar" class="avatar" aria-label="Демонстрационный аватар">🙂</div>
-    <h2>RainyStar</h2>
-    <p id="status" class="status" aria-live="polite">Сейчас молчит</p>
+    <div class="avatar">
+      <img id="character" src="1.png" alt="Аватар RainyStar">
+    </div>
+
+    <p id="status">Сейчас молчит</p>
 
     <button id="silentButton">Закрытый рот</button>
     <button id="talkButton">Открытый рот</button>
-
-    <footer>Первая тестовая версия · Интеграция с Lolka ещё не подключена</footer>
   </main>
 
   <script>
-    const avatar = document.getElementById('avatar');
+    const character = document.getElementById('character');
     const status = document.getElementById('status');
 
     function setSpeaking(speaking) {
-      avatar.textContent = speaking ? '😮' : '🙂';
-      avatar.classList.toggle('speaking', speaking);
-      status.textContent = speaking ? 'Говорит сейчас' : 'Сейчас молчит';
+      character.src = speaking ? '2.png' : '1.png';
+      status.textContent = speaking
+        ? 'Говорит сейчас'
+        : 'Сейчас молчит';
     }
 
     document.getElementById('silentButton')
@@ -93,6 +93,10 @@
 
     document.getElementById('talkButton')
       .addEventListener('click', () => setSpeaking(true));
+
+    character.addEventListener('error', () => {
+      status.textContent = 'Ошибка загрузки картинки — проверь имена PNG-файлов';
+    });
   </script>
 </body>
 </html>
