@@ -185,5 +185,16 @@ character.addEventListener("error", () => {
 render();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+<script>
+  const SUPABASE_URL = 'https://srizhmuylqdcjnayshqm.supabase.co/rest/v1/';
+  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_xQ9FoSrgdt42Udfl0c4SAg_1f70lZDx';
+
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+</script>
+
 </body>
 </html>
