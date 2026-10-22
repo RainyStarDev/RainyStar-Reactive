@@ -217,9 +217,8 @@
     };
 
     document.getElementById('hideButton').onclick = () => {
-      clearInterval(timer);
-      timer = null;
-      document.body.classList.add('clean');
+  document.body.classList.add('clean');
+};
     };
 
     if (new URLSearchParams(location.search).get('clean') === '1') {
