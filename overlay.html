@@ -1,0 +1,233 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RainyStar Reactive — OBS Overlay</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      font-family: system-ui, sans-serif;
+      color: white;
+    }
+
+    #avatar {
+      display: block;
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    #controls {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      width: min(330px, calc(100vw - 24px));
+      padding: 16px;
+      border: 1px solid #49415f;
+      border-radius: 14px;
+      background: rgba(20, 18, 31, .94);
+      color: #f5f0ff;
+    }
+
+    #controls h1 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    #controls p {
+      color: #c7bfd9;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+
+    input {
+      width: 100%;
+      font-size: 12px;
+    }
+
+    button {
+      margin: 10px 6px 0 0;
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: #b69aff;
+      color: #171121;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    #status {
+      overflow-wrap: anywhere;
+    }
+
+    body.clean #controls {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <h1>RainyStar Reactive</h1>
+    <p>Тестовый оверлей для OBS. Выбери два PNG.</p>
+
+    <label for="closedFile">PNG — рот закрыт</label>
+    <input id="closedFile" type="file" accept="image/png">
+
+    <label for="openFile">PNG — рот открыт</label>
+    <input id="openFile" type="file" accept="image/png">
+
+    <button id="closedButton">Рот закрыт</button>
+    <button id="openButton">Рот открыт</button>
+    <button id="testButton">Тест переключения</button>
+    <button id="hideButton">Скрыть панель</button>
+
+    <p id="status">Загрузи изображения для теста.</p>
+    <p>Для показа только персонажа добавь к URL: ?clean=1</p>
+  </div>
+
+  <img id="avatar" alt="Аватар RainyStar Reactive" hidden>
+
+  <script>
+    const avatar = document.getElementById('avatar');
+    const status = document.getElementById('status');
+
+    const closedFile = document.getElementById('closedFile');
+    const openFile = document.getElementById('openFile');
+
+    let closedImage = localStorage.getItem('rsr_closed_png') || '';
+    let openImage = localStorage.getItem('rsr_open_png') || '';
+    let isOpen = false;
+    let timer = null;
+
+    function showMouth(open) {
+      const source = open ? openImage : closedImage;
+
+      if (!source) {
+        status.textContent = 'Сначала выбери соответствующий PNG.';
+        return;
+      }
+
+      isOpen = open;
+      avatar.src = source;
+      avatar.hidden = false;
+      status.textContent = open
+        ? 'Отображается PNG с открытым ртом.'
+        : 'Отображается PNG с закрытым ртом.';
+    }
+
+    function loadImage(input, state) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      if (file.type !== 'image/png') {
+        status.textContent = 'Нужен файл формата PNG.';
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        status.textContent = 'Файл больше 5 МБ. Выбери PNG поменьше.';
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const image = new Image();
+
+        image.onload = () => {
+          if (state === 'closed') {
+            closedImage = reader.result;
+            localStorage.setItem('rsr_closed_png', closedImage);
+            showMouth(false);
+          } else {
+            openImage = reader.result;
+            localStorage.setItem('rsr_open_png', openImage);
+            showMouth(true);
+          }
+
+          status.textContent = 'PNG загружен и сохранён в этом браузере.';
+        };
+
+        image.onerror = () => {
+          status.textContent = 'Не удалось прочитать изображение.';
+        };
+
+        image.src = reader.result;
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    closedFile.addEventListener('change', () => {
+      loadImage(closedFile, 'closed');
+    });
+
+    openFile.addEventListener('change', () => {
+      loadImage(openFile, 'open');
+    });
+
+    document.getElementById('closedButton').onclick = () => {
+      clearInterval(timer);
+      timer = null;
+      showMouth(false);
+    };
+
+    document.getElementById('openButton').onclick = () => {
+      clearInterval(timer);
+      timer = null;
+      showMouth(true);
+    };
+
+    document.getElementById('testButton').onclick = () => {
+      if (!closedImage || !openImage) {
+        status.textContent = 'Сначала загрузи оба PNG.';
+        return;
+      }
+
+      clearInterval(timer);
+      showMouth(false);
+
+      timer = setInterval(() => {
+        showMouth(!isOpen);
+      }, 500);
+
+      status.textContent = 'Тест: переключение каждые 0,5 секунды.';
+    };
+
+    document.getElementById('hideButton').onclick = () => {
+      clearInterval(timer);
+      timer = null;
+      document.body.classList.add('clean');
+    };
+
+    if (new URLSearchParams(location.search).get('clean') === '1') {
+      document.body.classList.add('clean');
+    }
+
+    if (closedImage) showMouth(false);
+    else if (openImage) showMouth(true);
+  </script>
+</body>
+</html>
