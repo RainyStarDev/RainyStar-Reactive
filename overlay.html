@@ -216,9 +216,8 @@
       status.textContent = 'Тест: переключение каждые 0,5 секунды.';
     };
 
-    document.getElementById('hideButton').onclick = () => {
-  document.body.classList.add('clean');
-};
+        document.getElementById('hideButton').onclick = () => {
+      document.body.classList.add('clean');
     };
 
     if (new URLSearchParams(location.search).get('clean') === '1') {
