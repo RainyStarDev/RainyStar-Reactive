@@ -1,0 +1,302 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RainyStar Reactive — Настройка аватара</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101018;
+      --panel: #1b1b29;
+      --accent: #b69aff;
+      --text: #f4f1ff;
+      --muted: #aaa5bd;
+      --border: #373349;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+    }
+
+    main {
+      width: 100%;
+      max-width: 820px;
+      margin: auto;
+    }
+
+    h1 { margin-bottom: 8px; }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .panel {
+      margin-top: 20px;
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--panel);
+    }
+
+    .uploads {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 260px;
+      margin-top: 20px;
+      overflow: hidden;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle, #29243b 0%, #15151f 72%);
+    }
+
+    #avatar {
+      display: none;
+      max-width: 100%;
+      max-height: 380px;
+      object-fit: contain;
+    }
+
+    .placeholder {
+      padding: 20px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    button {
+      margin: 14px 8px 0 0;
+      padding: 12px 18px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #171121;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    #status {
+      min-height: 24px;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 500px) {
+      body { padding: 20px 12px; }
+      .panel { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>RainyStar Reactive</h1>
+  <p class="muted">
+    Настройка аватара для Lolka и OBS.
+    Выбери изображения с закрытым и открытым ртом.
+  </p>
+
+  <section class="panel">
+    <h2>1. Изображения аватара</h2>
+
+    <div class="uploads">
+      <div>
+        <label for="closedFile">PNG — рот закрыт</label>
+        <input id="closedFile" type="file" accept="image/png">
+      </div>
+
+      <div>
+        <label for="openFile">PNG — рот открыт</label>
+        <input id="openFile" type="file" accept="image/png">
+      </div>
+    </div>
+
+    <p class="muted">
+      Лучше использовать изображения одинакового размера
+      с прозрачным фоном.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>2. Предпросмотр</h2>
+
+    <div class="preview">
+      <img id="avatar" alt="Предпросмотр аватара">
+      <div id="placeholder" class="placeholder">
+        Сначала выбери PNG с закрытым ртом.
+      </div>
+    </div>
+
+    <button id="closedButton" disabled>
+      Рот закрыт
+    </button>
+
+    <button id="openButton" disabled>
+      Рот открыт
+    </button>
+
+    <button id="testButton" disabled>
+      Тестовое переключение
+    </button>
+
+    <p id="status" role="status" aria-live="polite">
+      Ожидаю изображения.
+    </p>
+  </section>
+
+  <p class="muted">
+    Это локальный тест. Изображения не сохраняются на сервере
+    и не подключены к голосовой активности Lolka.
+  </p>
+</main>
+
+<script>
+  const closedFile = document.getElementById('closedFile');
+  const openFile = document.getElementById('openFile');
+  const avatar = document.getElementById('avatar');
+  const placeholder = document.getElementById('placeholder');
+  const status = document.getElementById('status');
+
+  const closedButton = document.getElementById('closedButton');
+  const openButton = document.getElementById('openButton');
+  const testButton = document.getElementById('testButton');
+
+  let closedUrl = '';
+  let openUrl = '';
+  let isOpen = false;
+  let testTimer = null;
+
+  function showAvatar(open) {
+    const source = open ? openUrl : closedUrl;
+
+    if (!source) {
+      status.textContent = 'Сначала выбери нужный PNG.';
+      return;
+    }
+
+    isOpen = open;
+    avatar.src = source;
+    avatar.style.display = 'block';
+    placeholder.style.display = 'none';
+
+    status.textContent = open
+      ? 'Сейчас отображается PNG с открытым ртом.'
+      : 'Сейчас отображается PNG с закрытым ртом.';
+  }
+
+  function readPng(input, state) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    if (file.type !== 'image/png') {
+      status.textContent = 'Выбери файл именно в формате PNG.';
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const url = reader.result;
+
+      const image = new Image();
+      image.onload = () => {
+        if (state === 'closed') {
+          closedUrl = url;
+        } else {
+          openUrl = url;
+        }
+
+        closedButton.disabled = !closedUrl;
+        openButton.disabled = !openUrl;
+        testButton.disabled = !(closedUrl && openUrl);
+
+        status.textContent = 'Изображение загружено в предпросмотр браузера.';
+
+        if (state === 'closed' || !closedUrl) {
+          showAvatar(false);
+        } else {
+          showAvatar(true);
+        }
+      };
+
+      image.onerror = () => {
+        status.textContent = 'Не удалось прочитать изображение. Попробуй другой PNG.';
+      };
+
+      image.src = url;
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  closedFile.addEventListener('change', () => {
+    readPng(closedFile, 'closed');
+  });
+
+  openFile.addEventListener('change', () => {
+    readPng(openFile, 'open');
+  });
+
+  closedButton.addEventListener('click', () => {
+    clearInterval(testTimer);
+    testTimer = null;
+    showAvatar(false);
+  });
+
+  openButton.addEventListener('click', () => {
+    clearInterval(testTimer);
+    testTimer = null;
+    showAvatar(true);
+  });
+
+  testButton.addEventListener('click', () => {
+    if (!closedUrl || !openUrl) return;
+
+    clearInterval(testTimer);
+
+    showAvatar(false);
+    status.textContent = 'Тест идёт: рот переключается каждые 500 мс.';
+
+    testTimer = setInterval(() => {
+      showAvatar(!isOpen);
+    }, 500);
+  });
+</script>
+</body>
+</html>
