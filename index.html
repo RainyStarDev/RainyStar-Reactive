@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RainyStar Reactive</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #f4f5ff;
+      background: #10111d;
+      display: grid;
+      place-items: center;
+    }
+
+    main {
+      width: min(900px, 92%);
+      padding: 32px 20px;
+      text-align: center;
+    }
+
+    h1 { color: #a9a4ff; }
+    .subtitle { color: #b8b8cc; }
+
+    .avatar {
+      width: 220px;
+      height: 220px;
+      margin: 28px auto 12px;
+      border: 2px solid #7771df;
+      border-radius: 24px;
+      display: grid;
+      place-items: center;
+      background: #202137;
+      font-size: 90px;
+      transition: transform .15s, border-color .15s;
+    }
+
+    .avatar.speaking {
+      border-color: #68edc0;
+      transform: scale(1.04);
+      box-shadow: 0 0 28px #68edc055;
+    }
+
+    .status { color: #68edc0; }
+
+    button {
+      margin: 8px 4px;
+      padding: 12px 18px;
+      border: 0;
+      border-radius: 10px;
+      background: #7771df;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button:hover { background: #918bff; }
+    footer { margin-top: 32px; color: #89899f; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>✦ RainyStar Reactive</h1>
+    <p class="subtitle">Анимированные аватары для Lolka и OBS</p>
+
+    <div id="avatar" class="avatar" aria-label="Демонстрационный аватар">🙂</div>
+    <h2>RainyStar</h2>
+    <p id="status" class="status" aria-live="polite">Сейчас молчит</p>
+
+    <button id="silentButton">Закрытый рот</button>
+    <button id="talkButton">Открытый рот</button>
+
+    <footer>Первая тестовая версия · Интеграция с Lolka ещё не подключена</footer>
+  </main>
+
+  <script>
+    const avatar = document.getElementById('avatar');
+    const status = document.getElementById('status');
+
+    function setSpeaking(speaking) {
+      avatar.textContent = speaking ? '😮' : '🙂';
+      avatar.classList.toggle('speaking', speaking);
+      status.textContent = speaking ? 'Говорит сейчас' : 'Сейчас молчит';
+    }
+
+    document.getElementById('silentButton')
+      .addEventListener('click', () => setSpeaking(false));
+
+    document.getElementById('talkButton')
+      .addEventListener('click', () => setSpeaking(true));
+  </script>
+</body>
+</html>
