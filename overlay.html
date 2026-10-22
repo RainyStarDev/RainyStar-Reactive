@@ -4,228 +4,283 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RainyStar Reactive — OBS Overlay</title>
+  <title>RainyStar Reactive — Overlay</title>
   <style>
     * { box-sizing: border-box; }
 
     html, body {
       margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
+      min-width: 100%;
+      min-height: 100%;
       background: transparent;
-      font-family: system-ui, sans-serif;
-      color: white;
+      color: #f4f4f5;
+      font-family: Arial, sans-serif;
     }
+
+    body { overflow: hidden; }
 
     #avatar {
       display: block;
-      position: absolute;
-      left: 50%;
-      bottom: 0;
-      transform: translateX(-50%);
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
 
-    #controls {
+    #panel {
       position: fixed;
       top: 12px;
       left: 12px;
       z-index: 10;
-      width: min(330px, calc(100vw - 24px));
+      width: min(340px, calc(100vw - 24px));
       padding: 16px;
-      border: 1px solid #49415f;
+      border: 1px solid #414155;
       border-radius: 14px;
-      background: rgba(20, 18, 31, .94);
-      color: #f5f0ff;
+      background: #171722;
+      box-shadow: 0 8px 30px #0008;
     }
 
-    #controls h1 {
-      margin: 0 0 8px;
-      font-size: 18px;
-    }
+    h2 { margin: 0 0 12px; font-size: 18px; }
+    p { margin: 8px 0; font-size: 13px; color: #c7c7d4; }
+    label { display: block; margin-top: 12px; font-size: 13px; }
 
-    #controls p {
-      color: #c7bfd9;
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    label {
+    input[type="file"] {
       display: block;
-      margin-top: 12px;
-      margin-bottom: 5px;
-      font-size: 13px;
-    }
-
-    input {
       width: 100%;
+      margin-top: 6px;
       font-size: 12px;
     }
 
     button {
-      margin: 10px 6px 0 0;
-      padding: 9px 12px;
-      border: 0;
+      margin: 5px 4px 0 0;
+      padding: 9px 11px;
+      border: 1px solid #50506a;
       border-radius: 8px;
-      background: #b69aff;
-      color: #171121;
-      font-weight: 700;
+      background: #29293b;
+      color: white;
       cursor: pointer;
     }
 
+    button:hover { background: #393951; }
+
     #status {
+      margin-top: 12px;
       overflow-wrap: anywhere;
+      font-size: 12px;
+      color: #b8f3ce;
     }
 
-    body.clean #controls {
-      display: none;
+    body.clean #panel { display: none; }
+    body.clean #avatar { width: 100vw; height: 100vh; }
+
+    #empty {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      color: white;
+      background: #171722dd;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 12px;
     }
+
+    body.has-avatar #empty { display: none; }
+    body.clean #empty { display: none; }
   </style>
 </head>
 <body>
-  <div id="controls">
-    <h1>RainyStar Reactive</h1>
-    <p>Тестовый оверлей для OBS. Выбери два PNG.</p>
+  <img id="avatar" alt="Аватар RainyStar Reactive">
 
-    <label for="closedFile">PNG — рот закрыт</label>
-    <input id="closedFile" type="file" accept="image/png">
+  <div id="empty">Сначала загрузи PNG в панели управления</div>
 
-    <label for="openFile">PNG — рот открыт</label>
-    <input id="openFile" type="file" accept="image/png">
+  <section id="panel">
+    <h2>RainyStar Reactive</h2>
+    <p>Загрузи два PNG одного персонажа: с закрытым и открытым ртом.</p>
 
-    <button id="closedButton">Рот закрыт</button>
-    <button id="openButton">Рот открыт</button>
-    <button id="testButton">Тест переключения</button>
-    <button id="hideButton">Скрыть панель</button>
+    <label>
+      PNG — рот закрыт
+      <input id="closedFile" type="file" accept="image/png">
+    </label>
 
-    <p id="status">Загрузи изображения для теста.</p>
-    <p>Для показа только персонажа добавь к URL: ?clean=1</p>
-  </div>
+    <label>
+      PNG — рот открыт
+      <input id="openFile" type="file" accept="image/png">
+    </label>
 
-  <img id="avatar" alt="Аватар RainyStar Reactive" hidden>
+    <div>
+      <button id="closedBtn">Рот закрыт</button>
+      <button id="openBtn">Рот открыт</button>
+    </div>
+    <div>
+      <button id="testBtn">Тест переключения</button>
+      <button id="stopBtn">Стоп</button>
+      <button id="hideButton">Скрыть панель</button>
+    </div>
+
+    <div id="status">Ожидаю загрузки изображений.</div>
+  </section>
 
   <script>
-    const avatar = document.getElementById('avatar');
-    const status = document.getElementById('status');
+    (() => {
+      const avatar = document.getElementById('avatar');
+      const status = document.getElementById('status');
+      const closedFile = document.getElementById('closedFile');
+      const openFile = document.getElementById('openFile');
 
-    const closedFile = document.getElementById('closedFile');
-    const openFile = document.getElementById('openFile');
+      let closedImage = null;
+      let openImage = null;
+      let timer = null;
+      let isOpen = false;
 
-    let closedImage = localStorage.getItem('rsr_closed_png') || '';
-    let openImage = localStorage.getItem('rsr_open_png') || '';
-    let isOpen = false;
-    let timer = null;
-
-    function showMouth(open) {
-      const source = open ? openImage : closedImage;
-
-      if (!source) {
-        status.textContent = 'Сначала выбери соответствующий PNG.';
-        return;
+      function showStatus(message) {
+        status.textContent = message;
       }
 
-      isOpen = open;
-      avatar.src = source;
-      avatar.hidden = false;
-      status.textContent = open
-        ? 'Отображается PNG с открытым ртом.'
-        : 'Отображается PNG с закрытым ртом.';
-    }
+      function render() {
+        const src = isOpen ? openImage : closedImage;
 
-    function loadImage(input, state) {
-      const file = input.files && input.files[0];
-      if (!file) return;
-
-      if (file.type !== 'image/png') {
-        status.textContent = 'Нужен файл формата PNG.';
-        return;
+        if (src) {
+          avatar.src = src;
+          document.body.classList.add('has-avatar');
+        } else {
+          avatar.removeAttribute('src');
+          document.body.classList.remove('has-avatar');
+        }
       }
 
-      if (file.size > 5 * 1024 * 1024) {
-        status.textContent = 'Файл больше 5 МБ. Выбери PNG поменьше.';
-        return;
+      function stopTest() {
+        if (timer !== null) {
+          clearInterval(timer);
+          timer = null;
+        }
       }
 
-      const reader = new FileReader();
+      function startTest() {
+        if (!closedImage || !openImage) {
+          showStatus('Сначала загрузи оба PNG.');
+          return;
+        }
 
-      reader.onload = () => {
-        const image = new Image();
+        stopTest();
+        isOpen = false;
+        render();
 
-        image.onload = () => {
-          if (state === 'closed') {
-            closedImage = reader.result;
-            localStorage.setItem('rsr_closed_png', closedImage);
-            showMouth(false);
-          } else {
-            openImage = reader.result;
-            localStorage.setItem('rsr_open_png', openImage);
-            showMouth(true);
-          }
+        timer = setInterval(() => {
+          isOpen = !isOpen;
+          render();
+        }, 500);
 
-          status.textContent = 'PNG загружен и сохранён в этом браузере.';
+        showStatus('Тест работает: рот переключается каждые 0,5 секунды.');
+      }
+
+      function loadFile(file, type) {
+        if (!file) return;
+
+        if (file.type !== 'image/png') {
+          showStatus('Выбери файл в формате PNG.');
+          return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          showStatus('Файл больше 5 МБ. Выбери PNG поменьше.');
+          return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          const image = new Image();
+
+          image.onload = () => {
+            if (type === 'closed') {
+              closedImage = reader.result;
+              try {
+                localStorage.setItem('rsr_closed_png', closedImage);
+              } catch (error) {
+                showStatus('PNG загружен, но не удалось сохранить его в браузере.');
+              }
+            } else {
+              openImage = reader.result;
+              try {
+                localStorage.setItem('rsr_open_png', openImage);
+              } catch (error) {
+                showStatus('PNG загружен, но не удалось сохранить его в браузере.');
+              }
+            }
+
+            isOpen = false;
+            render();
+
+            if (closedImage && openImage) {
+              showStatus('Оба PNG готовы. Можно запускать тест.');
+            } else {
+              showStatus('Изображение загружено. Теперь загрузи второе.');
+            }
+          };
+
+          image.onerror = () => showStatus('Не удалось прочитать PNG. Попробуй другой файл.');
+          image.src = reader.result;
         };
 
-        image.onerror = () => {
-          status.textContent = 'Не удалось прочитать изображение.';
-        };
+        reader.onerror = () => showStatus('Ошибка чтения файла.');
+        reader.readAsDataURL(file);
+      }
 
-        image.src = reader.result;
+      closedFile.addEventListener('change', () => {
+        loadFile(closedFile.files[0], 'closed');
+      });
+
+      openFile.addEventListener('change', () => {
+        loadFile(openFile.files[0], 'open');
+      });
+
+      document.getElementById('closedBtn').onclick = () => {
+        stopTest();
+        isOpen = false;
+        render();
+        showStatus(closedImage ? 'Показан PNG с закрытым ртом.' : 'Сначала загрузи PNG с закрытым ртом.');
       };
 
-      reader.readAsDataURL(file);
-    }
+      document.getElementById('openBtn').onclick = () => {
+        stopTest();
+        if (!openImage) {
+          showStatus('Сначала загрузи PNG с открытым ртом.');
+          return;
+        }
+        isOpen = true;
+        render();
+        showStatus('Показан PNG с открытым ртом.');
+      };
 
-    closedFile.addEventListener('change', () => {
-      loadImage(closedFile, 'closed');
-    });
+      document.getElementById('testBtn').onclick = startTest;
 
-    openFile.addEventListener('change', () => {
-      loadImage(openFile, 'open');
-    });
+      document.getElementById('stopBtn').onclick = () => {
+        stopTest();
+        isOpen = false;
+        render();
+        showStatus('Тест остановлен.');
+      };
 
-    document.getElementById('closedButton').onclick = () => {
-      clearInterval(timer);
-      timer = null;
-      showMouth(false);
-    };
+      document.getElementById('hideButton').onclick = () => {
+        document.body.classList.add('clean');
+      };
 
-    document.getElementById('openButton').onclick = () => {
-      clearInterval(timer);
-      timer = null;
-      showMouth(true);
-    };
-
-    document.getElementById('testButton').onclick = () => {
-      if (!closedImage || !openImage) {
-        status.textContent = 'Сначала загрузи оба PNG.';
-        return;
+      try {
+        closedImage = localStorage.getItem('rsr_closed_png');
+        openImage = localStorage.getItem('rsr_open_png');
+      } catch (error) {
+        showStatus('Браузер запретил доступ к сохранённым изображениям.');
       }
 
-      clearInterval(timer);
-      showMouth(false);
+      render();
 
-      timer = setInterval(() => {
-        showMouth(!isOpen);
-      }, 500);
+      if (new URLSearchParams(location.search).get('clean') === '1') {
+        document.body.classList.add('clean');
+      }
 
-      status.textContent = 'Тест: переключение каждые 0,5 секунды.';
-    };
-
-        document.getElementById('hideButton').onclick = () => {
-      document.body.classList.add('clean');
-    };
-
-    if (new URLSearchParams(location.search).get('clean') === '1') {
-      document.body.classList.add('clean');
-    }
-
-    if (closedImage) showMouth(false);
-    else if (openImage) showMouth(true);
+      if (closedImage && openImage) {
+        showStatus('Изображения восстановлены из хранилища браузера.');
+      }
+    })();
   </script>
 </body>
 </html>
