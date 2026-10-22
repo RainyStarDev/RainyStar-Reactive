@@ -3,100 +3,190 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RainyStar Reactive</title>
   <style>
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
+      padding: 24px;
       min-height: 100vh;
       background: #10111d;
       color: #f4f5ff;
       font-family: Arial, sans-serif;
-      text-align: center;
     }
 
-    main {
+    h1, .intro { text-align: center; }
+    h1 { color: #a9a4ff; }
+    .intro { color: #b8b8cc; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 280px) 1fr;
+      gap: 24px;
+      max-width: 1000px;
+      margin: 30px auto;
+    }
+
+    .panel, .preview {
+      padding: 20px;
+      border: 1px solid #343550;
+      border-radius: 16px;
+      background: #191a2b;
+    }
+
+    .member {
+      display: block;
       width: 100%;
-      padding: 16px;
+      margin: 8px 0;
+      padding: 12px;
+      border: 1px solid #414261;
+      border-radius: 10px;
+      background: #24253b;
+      color: white;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .member.active {
+      border-color: #a9a4ff;
+      background: #343153;
     }
 
     .avatar {
-      width: min(420px, 90vw);
-      height: min(600px, 75vh);
-      margin: 0 auto;
+      height: 390px;
       display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
     }
 
     .avatar img {
-      width: 100%;
-      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
       object-fit: contain;
-      display: block;
     }
 
-    h1 {
-      color: #a9a4ff;
-      font-size: 24px;
-    }
+    .status { color: #68edc0; text-align: center; }
 
-    #status {
-      color: #68edc0;
-    }
+    .actions { text-align: center; }
 
-    button {
+    button.action {
       margin: 5px;
       padding: 12px 16px;
       border: 0;
-      border-radius: 10px;
+      border-radius: 9px;
       background: #7771df;
       color: white;
       cursor: pointer;
-      font-size: 15px;
     }
 
-    button:hover {
-      background: #918bff;
+    .note {
+      color: #a9a9bd;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 650px) {
+      .layout { grid-template-columns: 1fr; }
+      .avatar { height: 320px; }
     }
   </style>
 </head>
 <body>
-  <main>
-    <h1>✦ RainyStar Reactive</h1>
+  <h1>✦ RainyStar Reactive</h1>
+  <p class="intro">Прототип управления аватарами участников</p>
 
-    <div class="avatar">
-      <img id="character" src="1.png" alt="Аватар RainyStar">
-    </div>
+  <div class="layout">
+    <section class="panel">
+      <h2>Участники</h2>
+      <p class="note">Демо-список — пока не подключён к Lolka.</p>
+      <div id="members"></div>
+    </section>
 
-    <p id="status">Сейчас молчит</p>
+    <section class="preview">
+      <h2 id="selectedName">RainyStar</h2>
+      <div class="avatar">
+        <img id="character" src="1.png" alt="Аватар участника">
+      </div>
+      <p id="status" class="status">Сейчас молчит</p>
 
-    <button id="silentButton">Закрытый рот</button>
-    <button id="talkButton">Открытый рот</button>
-  </main>
+      <div class="actions">
+        <button class="action" id="silentButton">Закрытый рот</button>
+        <button class="action" id="talkButton">Открытый рот</button>
+      </div>
+      <p class="note">
+        Выбери участника слева, затем проверь его аватар.
+        Состояние каждого участника сохраняется отдельно в этой демо-странице.
+      </p>
+    </section>
+  </div>
 
   <script>
-    const character = document.getElementById('character');
-    const status = document.getElementById('status');
+    const people = [
+      { id: 1, name: "RainyStar", speaking: false },
+      { id: 2, name: "Участник 2", speaking: false },
+      { id: 3, name: "Участник 3", speaking: false }
+    ];
 
-    function setSpeaking(speaking) {
-      character.src = speaking ? '2.png' : '1.png';
-      status.textContent = speaking
-        ? 'Говорит сейчас'
-        : 'Сейчас молчит';
+    let selectedId = 1;
+
+    const members = document.getElementById("members");
+    const character = document.getElementById("character");
+    const selectedName = document.getElementById("selectedName");
+    const status = document.getElementById("status");
+
+    function renderMembers() {
+      members.innerHTML = "";
+
+      people.forEach(person => {
+        const button = document.createElement("button");
+        button.className =
+          "member" + (person.id === selectedId ? " active" : "");
+        button.textContent =
+          person.name + (person.speaking ? " · Говорит" : " · Молчит");
+
+        button.addEventListener("click", () => {
+          selectedId = person.id;
+          render();
+        });
+
+        members.appendChild(button);
+      });
     }
 
-    document.getElementById('silentButton')
-      .addEventListener('click', () => setSpeaking(false));
+    function render() {
+      const person = people.find(p => p.id === selectedId);
+      if (!person) return;
 
-    document.getElementById('talkButton')
-      .addEventListener('click', () => setSpeaking(true));
+      selectedName.textContent = person.name;
+      character.src = person.speaking ? "2.png" : "1.png";
+      status.textContent = person.speaking
+        ? "Говорит сейчас"
+        : "Сейчас молчит";
 
-    character.addEventListener('error', () => {
-      status.textContent = 'Ошибка загрузки картинки — проверь имена PNG-файлов';
+      renderMembers();
+    }
+
+    function setSpeaking(speaking) {
+      const person = people.find(p => p.id === selectedId);
+      if (!person) return;
+
+      person.speaking = speaking;
+      render();
+    }
+
+    document.getElementById("silentButton")
+      .addEventListener("click", () => setSpeaking(false));
+
+    document.getElementById("talkButton")
+      .addEventListener("click", () => setSpeaking(true));
+
+    character.addEventListener("error", () => {
+      status.textContent = "Не удалось загрузить PNG. Проверь имена файлов.";
     });
+
+    render();
   </script>
 </body>
 </html>
